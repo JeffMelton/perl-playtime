@@ -14,6 +14,9 @@ my $continue = promptUser();
 if ( $response->is_success and $response->previous ) {
   print $request->url, ' redirected to ', $response->request->uri, "\n";
   promptUser("Would you like to continue? ");
+  if ($continue =~ m/y/i) {
+  	open_browser($response->request->uri);
+  }
 }
 
 sub promptUser {
@@ -71,10 +74,6 @@ sub promptUser {
    } else {
       return $_;
    }
-}
-
-if ($continue =~ m/y/i) {
-	open_browser($response->request->uri);
 }
 
 exit 0;

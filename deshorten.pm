@@ -13,10 +13,11 @@ my $continue = promptUser();
 
 if ( $response->is_success and $response->previous ) {
   print $request->url, ' redirected to ', $response->request->uri, "\n";
-  promptUser("Would you like to continue? ");
-  if ($continue =~ m/y/i) {
-  	open_browser($response->request->uri);
-  }
+}
+
+promptUser("Would you like to continue? ", "y");
+if ($continue =~ m/y/i) {
+	open_browser($response->request->uri);
 }
 
 sub promptUser {
@@ -34,19 +35,15 @@ sub promptUser {
    #  make the input arguments local variables.                        #
    #-------------------------------------------------------------------#
 
-   my($promptString,$defaultValue) = @_;
-   $defaultValue ||= "y";
+   my ($promptString, $defaultValue) = @_;
 
    #-------------------------------------------------------------------#
    #  if there is a default value, use the first print statement; if   #
    #  no default is provided, print the second string.                 #
    #-------------------------------------------------------------------#
 
-   if ($defaultValue) {
-      print $promptString, "[", $defaultValue, "]: ";
-   } else {
-      print $promptString, ": ";
-   }
+   print $promptString, "[", $defaultValue, "]: ";
+   print $promptString, ": ";
 
    $| = 1;               # force a flush after our print
    $_ = <STDIN>;         # get the input from STDIN (presumably the keyboard)
@@ -74,6 +71,8 @@ sub promptUser {
    } else {
       return $_;
    }
+   $continue = $_;
+   return $continue;
 }
 
 exit 0;

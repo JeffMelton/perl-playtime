@@ -67,9 +67,9 @@ sub promptUser {
     #-----------------------------------------------------------------#
 
     if ("$defaultValue") {
-	return $_ ? $_ : $defaultValue;    # return $_ if it has a value
+		return $_ ? $_ : $defaultValue;    # return $_ if it has a value
     } else {
-	return $_;
+		return $_;
     }
     $continue = $_;
     return $continue;

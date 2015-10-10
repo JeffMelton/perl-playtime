@@ -9,22 +9,19 @@ my $url = $ARGV[0];
 my $ua = LWP::UserAgent->new;
 my $request = HTTP::Request->new( HEAD => $url );
 my $response = $ua->request($request);
-my $continue = promptUser();
 
 if ( $response->is_success and $response->previous ) {
-  print $request->url, ' redirected to ', $response->request->uri, "\n";
+  print 'Redirects to: ', $response->request->uri, "\n";
 }
 
-promptUser("Would you like to continue? ", "y");
-if ($continue =~ m/y/i) {
-	open_browser($response->request->uri);
-}
+my $continue = promptUser("Would you like to continue? ", "y");
 
 sub promptUser {
 
    #-------------------------------------------------------------------------#
    # promptUser, a Perl subroutine to prompt a user for input.
    # Copyright 2010 Alvin Alexander, http://www.devdaily.com
+   # http://alvinalexander.com/perl/edu/articles/pl010005
    # This code is shared here under the
    # Creative Commons Attribution-ShareAlike Unported 3.0 license.
    # See http://creativecommons.org/licenses/by-sa/3.0/ for more information.
@@ -35,18 +32,21 @@ sub promptUser {
    #  make the input arguments local variables.                        #
    #-------------------------------------------------------------------#
 
-   my ($promptString, $defaultValue) = @_;
+	my ($promptString, $defaultValue) = @_;
 
    #-------------------------------------------------------------------#
    #  if there is a default value, use the first print statement; if   #
    #  no default is provided, print the second string.                 #
    #-------------------------------------------------------------------#
 
-   print $promptString, "[", $defaultValue, "]: ";
-   print $promptString, ": ";
+    if ($defaultValue) {
+		print $promptString . "(" . $defaultValue . "): ";
+	} else {
+		print $promptString . ": ";
+	}
 
-   $| = 1;               # force a flush after our print
-   $_ = <STDIN>;         # get the input from STDIN (presumably the keyboard)
+	$| = 1;               # force a flush after our print
+	$_ = <STDIN>;         # get the input from STDIN (presumably the keyboard)
 
 
    #------------------------------------------------------------------#
@@ -54,7 +54,7 @@ sub promptUser {
    # gave us.                                                         #
    #------------------------------------------------------------------#
 
-   chomp;
+	chomp;
 
    #-----------------------------------------------------------------#
    #  if we had a $default value, and the user gave us input, then   #
@@ -66,13 +66,17 @@ sub promptUser {
    #  the calling routine will have to deal with that.               #
    #-----------------------------------------------------------------#
 
-   if ("$defaultValue") {
-      return $_ ? $_ : $defaultValue;    # return $_ if it has a value
-   } else {
-      return $_;
-   }
-   $continue = $_;
-   return $continue;
+	if ("$defaultValue") {
+		return $_ ? $_ : $defaultValue;    # return $_ if it has a value
+	} else {
+		return $_;
+	}
+	$continue = $_;
+	return $continue;
+}
+
+if ($continue =~ m/y/i) {
+	open_browser($response->request->uri);
 }
 
 exit 0;

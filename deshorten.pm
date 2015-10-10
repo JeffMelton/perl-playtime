@@ -40,9 +40,9 @@ sub promptUser {
    #-------------------------------------------------------------------#
 
     if ($defaultValue) {
-		print $promptString . "(" . $defaultValue . "): ";
+	print $promptString . "(" . $defaultValue . "): ";
     } else {
-		print $promptString . ": ";
+	print $promptString . ": ";
     }
 
     $| = 1;               # force a flush after our print
@@ -67,9 +67,9 @@ sub promptUser {
     #-----------------------------------------------------------------#
 
     if ("$defaultValue") {
-		return $_ ? $_ : $defaultValue;    # return $_ if it has a value
+	return $_ ? $_ : $defaultValue;    # return $_ if it has a value
     } else {
-		return $_;
+	return $_;
     }
     $continue = $_;
     return $continue;

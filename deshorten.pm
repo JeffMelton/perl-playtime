@@ -14,7 +14,7 @@ if ( $response->is_success and $response->previous ) {
   print 'Redirects to: ', $response->request->uri, "\n";
 }
 
-my $continue = promptUser("Would you like to continue? ", "y");
+my $continue = promptUser("Would you like to continue?", "y");
 
 sub promptUser {
 
@@ -40,7 +40,7 @@ sub promptUser {
    #-------------------------------------------------------------------#
 
     if ($defaultValue) {
-		print $promptString . "(" . $defaultValue . "): ";
+		print qq{$promptString [$defaultValue]: };
 	} else {
 		print $promptString . ": ";
 	}

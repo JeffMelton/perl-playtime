@@ -3,6 +3,7 @@ use strict;
 use warnings;
 
 use LWP::UserAgent;
+use URI::URL;
 use Browser::Open qw ( open_browser );
 
 my $url = $ARGV[0];
@@ -10,8 +11,18 @@ my $ua = LWP::UserAgent->new;
 my $request = HTTP::Request->new( HEAD => $url );
 my $response = $ua->request($request);
 
+my $dirtyURL = $response->request->uri;
+my $toBeCleaned = URI::URL->new($dirtyURL);
+my $cleanURL = URI::URL->new();
+
+$cleanURL->scheme( $toBeCleaned->scheme );
+$cleanURL->host( $toBeCleaned->host );
+$cleanURL->path( $toBeCleaned->path );
+
+my $toOpen = $cleanURL->as_string();
+
 if ( $response->is_success and $response->previous ) {
-	print 'Redirects to: ', $response->request->uri, "\n";
+	print 'Redirects to: ', $toOpen, "\n";
 }
 
 my $continue = promptUser("Would you like to continue?", "y");
@@ -29,11 +40,8 @@ sub promptUser {
 
 	my ($promptString, $defaultValue) = @_;
 
-   	# I don't think I need this logic, but if I peel out the if statement
-	# and leave just the print, it hangs ...
-
-    if ($defaultValue) {
-		print qq{$promptString [$defaultValue]: };
+    if ($defaultValue) { 								# I don't think I need this logic, but if I peel out the if statement
+		print qq{$promptString [$defaultValue]: };		# and leave just the print, it hangs ...
 	}
 
 	$| = 1;
@@ -51,8 +59,7 @@ sub promptUser {
 }
 
 if ($continue =~ m/y/i) {
-	# TODO: regex match and remove tracking parameters
-	open_browser($response->request->uri);
+	open_browser($toOpen);
 }
 
 exit 0;

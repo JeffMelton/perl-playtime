@@ -11,26 +11,26 @@ my $ua = LWP::UserAgent->new;
 my $request = HTTP::Request->new( HEAD => $url );
 my $response = $ua->request($request);
 
-my $dirtyURL = $response->request->uri;
-my $toBeCleaned = URI::URL->new($dirtyURL);
-my $cleanURL = URI::URL->new();
+my $dirty_url = $response->request->uri;
+my $to_be_cleaned = URI::URL->new($dirty_url);
+my $clean_url = URI::URL->new();
 
-$cleanURL->scheme( $toBeCleaned->scheme );
-$cleanURL->host( $toBeCleaned->host );
-$cleanURL->path( $toBeCleaned->path );
+$clean_url->scheme( $to_be_cleaned->scheme );
+$clean_url->host( $to_be_cleaned->host );
+$clean_url->path( $to_be_cleaned->path );
 
-my $toOpen = $cleanURL->as_string();
+my $to_open = $clean_url->as_string();
 
 if ( $response->is_success and $response->previous ) {
-	print 'Redirects to: ', $toOpen, "\n";
+	print 'Redirects to: ', $to_open, "\n";
 }
 
-my $continue = promptUser("Would you like to continue?", "y");
+my $continue = prompt_user("Would you like to continue?", "y");
 
-sub promptUser {
+sub prompt_user {
 
 	#-------------------------------------------------------------------------#
-	# promptUser, a Perl subroutine to prompt a user for input.
+	# prompt_user, a Perl subroutine to prompt a user for input.
 	# Copyright 2010 Alvin Alexander, http://www.devdaily.com
 	# http://alvinalexander.com/perl/edu/articles/pl010005
 	# This code is shared here under the
@@ -38,17 +38,17 @@ sub promptUser {
 	# See http://creativecommons.org/licenses/by-sa/3.0/ for more information.
 	#-------------------------------------------------------------------------#
 
-	my ($promptString, $defaultValue) = @_;
+	my ($prompt_string, $default_value) = @_;
 
-	print qq{$promptString [$defaultValue]: };
+	print qq{$prompt_string [$default_value]: };
 
 	$| = 1;
 	$_ = <STDIN>;
 
 	chomp;
 
-	if ($defaultValue) {
-		return $_ ? $_ : $defaultValue;
+	if ($default_value) {
+		return $_ ? $_ : $default_value;
 	} else {
 		return $_;
 	}
@@ -57,7 +57,7 @@ sub promptUser {
 }
 
 if ($continue =~ m/y/i) {
-	open_browser($toOpen);
+	open_browser($to_open);
 }
 
 exit 0;

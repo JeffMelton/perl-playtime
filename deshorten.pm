@@ -14,7 +14,7 @@ if ( $response->is_success and $response->previous ) {
   print 'Redirects to: ', $response->request->uri, "\n";
 }
 
-my $continue = promptUser("Would you like to continue? ", "y");
+my $continue = promptUser("Would you like to continue?", "y");
 
 sub promptUser {
 
@@ -32,7 +32,7 @@ sub promptUser {
    #  make the input arguments local variables.                        #
    #-------------------------------------------------------------------#
 
-   my ($promptString, $defaultValue) = @_;
+	my ($promptString, $defaultValue) = @_;
 
    #-------------------------------------------------------------------#
    #  if there is a default value, use the first print statement; if   #
@@ -40,39 +40,39 @@ sub promptUser {
    #-------------------------------------------------------------------#
 
     if ($defaultValue) {
-	print $promptString . "(" . $defaultValue . "): ";
-    } else {
-	print $promptString . ": ";
-    }
+		print qq{$promptString [$defaultValue]: };
+	} else {
+		print $promptString . ": ";
+	}
 
-    $| = 1;               # force a flush after our print
-    $_ = <STDIN>;         # get the input from STDIN (presumably the keyboard)
+	$| = 1;               # force a flush after our print
+	$_ = <STDIN>;         # get the input from STDIN (presumably the keyboard)
 
 
-    #------------------------------------------------------------------#
-    # remove the newline character from the end of the input the user  #
-    # gave us.                                                         #
-    #------------------------------------------------------------------#
+   #------------------------------------------------------------------#
+   # remove the newline character from the end of the input the user  #
+   # gave us.                                                         #
+   #------------------------------------------------------------------#
 
-    chomp;
+	chomp;
 
-    #-----------------------------------------------------------------#
-    #  if we had a $default value, and the user gave us input, then   #
-    #  return the input; if we had a default, and they gave us no     #
-    #  no input, return the $defaultValue.                            #
-    #                                                                 #
-    #  if we did not have a default value, then just return whatever  #
-    #  the user gave us.  if they just hit the <enter> key,           #
-    #  the calling routine will have to deal with that.               #
-    #-----------------------------------------------------------------#
+   #-----------------------------------------------------------------#
+   #  if we had a $default value, and the user gave us input, then   #
+   #  return the input; if we had a default, and they gave us no     #
+   #  no input, return the $defaultValue.                            #
+   #                                                                 #
+   #  if we did not have a default value, then just return whatever  #
+   #  the user gave us.  if they just hit the <enter> key,           #
+   #  the calling routine will have to deal with that.               #
+   #-----------------------------------------------------------------#
 
-    if ("$defaultValue") {
-	return $_ ? $_ : $defaultValue;    # return $_ if it has a value
-    } else {
-	return $_;
-    }
-    $continue = $_;
-    return $continue;
+	if ("$defaultValue") {
+		return $_ ? $_ : $defaultValue;    # return $_ if it has a value
+	} else {
+		return $_;
+	}
+	$continue = $_;
+	return $continue;
 }
 
 if ($continue =~ m/y/i) {

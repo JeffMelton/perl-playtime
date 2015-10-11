@@ -29,14 +29,14 @@ my $continue = promptUser("Would you like to continue?", "y");
 
 sub promptUser {
 
-   #-------------------------------------------------------------------------#
-   # promptUser, a Perl subroutine to prompt a user for input.
-   # Copyright 2010 Alvin Alexander, http://www.devdaily.com
-   # http://alvinalexander.com/perl/edu/articles/pl010005
-   # This code is shared here under the
-   # Creative Commons Attribution-ShareAlike Unported 3.0 license.
-   # See http://creativecommons.org/licenses/by-sa/3.0/ for more information.
-   #-------------------------------------------------------------------------#
+	#-------------------------------------------------------------------------#
+	# promptUser, a Perl subroutine to prompt a user for input.
+	# Copyright 2010 Alvin Alexander, http://www.devdaily.com
+	# http://alvinalexander.com/perl/edu/articles/pl010005
+	# This code is shared here under the
+	# Creative Commons Attribution-ShareAlike Unported 3.0 license.
+	# See http://creativecommons.org/licenses/by-sa/3.0/ for more information.
+	#-------------------------------------------------------------------------#
 
 	my ($promptString, $defaultValue) = @_;
 

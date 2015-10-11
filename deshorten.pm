@@ -27,17 +27,7 @@ sub promptUser {
    # See http://creativecommons.org/licenses/by-sa/3.0/ for more information.
    #-------------------------------------------------------------------------#
 
-   #-------------------------------------------------------------------#
-   #  two possible input arguments - $promptString, and $defaultValue  #
-   #  make the input arguments local variables.                        #
-   #-------------------------------------------------------------------#
-
 	my ($promptString, $defaultValue) = @_;
-
-   #-------------------------------------------------------------------#
-   #  if there is a default value, use the first print statement; if   #
-   #  no default is provided, print the second string.                 #
-   #-------------------------------------------------------------------#
 
    	# I don't think I need this logic, but if I peel out the if statement
 	# and leave just the print, it hangs ...
@@ -46,29 +36,13 @@ sub promptUser {
 		print qq{$promptString [$defaultValue]: };
 	}
 
-	$| = 1;               # force a flush after our print
-	$_ = <STDIN>;         # get the input from STDIN (presumably the keyboard)
-
-
-   #------------------------------------------------------------------#
-   # remove the newline character from the end of the input the user  #
-   # gave us.                                                         #
-   #------------------------------------------------------------------#
+	$| = 1;
+	$_ = <STDIN>;
 
 	chomp;
 
-   #-----------------------------------------------------------------#
-   #  if we had a $default value, and the user gave us input, then   #
-   #  return the input; if we had a default, and they gave us no     #
-   #  no input, return the $defaultValue.                            #
-   #                                                                 #
-   #  if we did not have a default value, then just return whatever  #
-   #  the user gave us.  if they just hit the <enter> key,           #
-   #  the calling routine will have to deal with that.               #
-   #-----------------------------------------------------------------#
-
 	if ($defaultValue) {
-		return $_ ? $_ : $defaultValue;    # return $_ if it has a value
+		return $_ ? $_ : $defaultValue;
 	} else {
 		return $_;
 	}
@@ -77,6 +51,7 @@ sub promptUser {
 }
 
 if ($continue =~ m/y/i) {
+	# TODO: regex match and remove tracking parameters
 	open_browser($response->request->uri);
 }
 

@@ -39,10 +39,11 @@ sub promptUser {
    #  no default is provided, print the second string.                 #
    #-------------------------------------------------------------------#
 
+   	# I don't think I need this logic, but if I peel out the if statement
+	# and leave just the print, it hangs ...
+
     if ($defaultValue) {
 		print qq{$promptString [$defaultValue]: };
-	} else {
-		print $promptString . ": ";
 	}
 
 	$| = 1;               # force a flush after our print

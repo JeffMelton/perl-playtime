@@ -40,9 +40,7 @@ sub promptUser {
 
 	my ($promptString, $defaultValue) = @_;
 
-    if ($defaultValue) {								# I don't think I need this logic, but if I peel out the if statement
-		print qq{$promptString [$defaultValue]: };		# and leave just the print, it hangs ...
-	}
+	print qq{$promptString [$defaultValue]: };
 
 	$| = 1;
 	$_ = <STDIN>;

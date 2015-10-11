@@ -11,7 +11,7 @@ my $request = HTTP::Request->new( HEAD => $url );
 my $response = $ua->request($request);
 
 if ( $response->is_success and $response->previous ) {
-  print 'Redirects to: ', $response->request->uri, "\n";
+	print 'Redirects to: ', $response->request->uri, "\n";
 }
 
 my $continue = promptUser("Would you like to continue?", "y");
@@ -66,7 +66,7 @@ sub promptUser {
    #  the calling routine will have to deal with that.               #
    #-----------------------------------------------------------------#
 
-	if ("$defaultValue") {
+	if ($defaultValue) {
 		return $_ ? $_ : $defaultValue;    # return $_ if it has a value
 	} else {
 		return $_;

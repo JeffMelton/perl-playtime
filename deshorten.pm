@@ -13,18 +13,14 @@ my $response = $ua->request($request);
 
 my $dirty_url = $response->request->uri;
 my $to_be_cleaned = URI::URL->new($dirty_url);
-my $clean_url = URI::URL->new();
 
-$clean_url->scheme( $to_be_cleaned->scheme );
-$clean_url->host( $to_be_cleaned->host );
-$clean_url->path( $to_be_cleaned->path );
+my $scheme = $to_be_cleaned->scheme;
+my $host = $to_be_cleaned->host;
+my $path = $to_be_cleaned->path;
 
-my $to_open = $clean_url->as_string();
+my $clean_url = $scheme . "://" . $host . $path;
 
-if ( $response->is_success and $response->previous ) {
-	print 'Redirects to: ', $to_open, "\n";
-}
-
+print "The clean url is: " . $clean_url . "\n";
 my $continue = prompt_user("Would you like to continue?", "y");
 
 sub prompt_user {
@@ -57,7 +53,7 @@ sub prompt_user {
 }
 
 if ($continue =~ m/y/i) {
-	open_browser($to_open);
+	open_browser($clean_url);
 }
 
 exit 0;

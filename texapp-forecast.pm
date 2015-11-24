@@ -1,27 +1,22 @@
-$addaction = sub {
-    my $command = shift;
+$handle = sub {
+    my $ref  = shift;
+    my $lat  = $ref->{'_texapp_latitude'};
+    my $long = $ref->{'_texapp_longitude'};
+    my $time = $ref->{'created_at'};
 
-    if ( $command =~ s#^/forecast ## && length($command) ) {
-        my $post    = &get_post($command);
-        my $api_key = "YOUR API KEY HERE";
-        if ( !$post->{'id'} ) {
-            &std("-- sorry, no such post (yet?): $command\n");
-            return 1;
-        }
-        my $lat  = $post->{'_texapp_latitude'};
-        my $long = $post->{'_texapp_longitude'};
-        if ( !length($lat) || !length($long) ) {
-            &std("-- sorry, no geoinformation in that post.\n");
-            return 1;
-        }
+    return &defaulthandle unless ( length($lat) || length($long) );
+    my $api_key = "YOUR API KEY HERE";
+    my $data =
+      &grabjson(
+        "https://api.forecast.io/forecast/${api_key}/${lat},${long},${time}");
+    my $current_conditions = $data->{'currently'}->{'summary'};
+    my $current_temp       = $data->{'currently'}->{'temperature'};
+    &std(
+            &standardpostinteractive($ref) . "\t"
+          . &descape($current_conditions) . "\n" . "\t"
+          . &descape($current_temp)
+          . "\x{00B0}F\n" # requires a Unicode escape sequence for the degree sign
+    );
 
-        my $ref = &grabjson("https://api.forecast.io/forecast/${api_key}/${lat},${long}");
-		&std(   &descape( $ref->{'currently'}->{'summary'} ) . "\n"
-			  . &descape( $ref->{'currently'}->{'temperature'} )
-			  . "\x{00B0}F\n" ); # requires a Unicode escape sequence for the degree sign
-
-        return 1;
-    }
-
-    return 0;
+    return 1;
 };

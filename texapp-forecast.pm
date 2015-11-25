@@ -3,6 +3,7 @@ $handle = sub {
     my $lat  = $ref->{'_texapp_latitude'};
     my $long = $ref->{'_texapp_longitude'};
     my $time = $ref->{'created_at'};
+	my $degree = "\x{2109}";
 
     return &defaulthandle unless ( length($lat) || length($long) );
     my $api_key = "YOUR API KEY HERE";
@@ -15,7 +16,7 @@ $handle = sub {
             &standardpostinteractive($ref) . "\t"
           . &descape($current_conditions) . "\n" . "\t"
           . &descape($current_temp)
-          . "\x{00B0}F\n" # requires a Unicode escape sequence for the degree sign
+          . $degree . "\n"
     );
 
     return 1;

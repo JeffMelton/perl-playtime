@@ -13,15 +13,13 @@ my ( @csv0, @csv1, @csv2 );
 my $block1 = "Patch Installation Status";
 my $block2 = "# of Modified Patches by Class";
 
-# DO NOT uncomment this until ready to roll!
 # Delete the first 22 rows, as these aren't needed
-# system("sed -i.bak -e '1,22d' $file");
+system("sed -i.bak -e '1,22d' $file");
 
 # open the initial input file
 open( my $data, '<', $file ) or die "Could not open '$file' $!\n";
 
 ## Break up the input CSV into the pieces I need ##
-
 # First reads the input file into an array, skipping blank lines
 while ( my $line = <$data> ) {
     unless ( $line =~ /^$/ ) {
@@ -56,7 +54,6 @@ foreach (@csv1) {
     print $out1 "$_\n";
 }
 foreach (@csv2) {
-
     # quick and dirty way to strip the block header left behind
     unless ( $_ =~ /$block2/ ) {
         print $out2 "$_\n";
@@ -71,7 +68,7 @@ close $out2;
 my $last_row1 = @csv1;
 
 # get number of columns in header row for later use
-my $header1 = join( ",", $csv1[1] );
+my $header1 	 = join( ",", $csv1[1] );
 my @header1      = split( ",", $header1 );
 my $last_column1 = @header1;
 my $header2      = join( ",", $csv2[1] );
@@ -79,7 +76,6 @@ my @header2      = split( ",", $header2 );
 my $last_column2 = @header2;
 
 ## Process the new CSV files into XLSX ##
-
 # reopen the CSV files I just made
 open my $fh1, '<', $csv1 or die "Could not open '$csv1' $!\n";
 open my $fh2, '<', $csv2 or die "Could not open '$csv2' $!\n";
@@ -88,35 +84,6 @@ my $csv1_out = Text::CSV->new( { binary => 1 } )
   or die "Cannot use CSV: " . Text::CSV->error_diag();
 my $csv2_out = Text::CSV->new( { binary => 1 } )
   or die "Cannot use CSV: " . Text::CSV->error_diag();
-
-# Create hashes of columns
-#my %combined1;
-#my %combined2;
-#
-#my @headers1 = @{ $csv1_out->getline($fh1) };
-#while ( my $row1 = $csv1_out->getline($fh1) ) {
-#    for my $header1 (@headers1) {
-#        push( @{ $combined1{$header1} }, shift(@$row1) );
-#    }
-#
-#}
-#
-#my @headers2 = @{ $csv2_out->getline($fh2) };
-#while ( my $row2 = $csv2_out->getline($fh2) ) {
-#    for my $header2 (@headers2) {
-#        push( @{ $combined2{$header2} }, shift(@$row2) );
-#    }
-#
-#}
-
-# print for testing
-#print Dumper \%combined1;
-#print Dumper \%combined2;
-
-# create array refs for XLSX writer to use
-# open my $io, "<", $file or die "$file: $!";
-# while (my $row = $csv->getline ($io)) {
-#        my @fields = @$row;
 
 # Create arrays of rows
 my @rows1;
@@ -145,8 +112,11 @@ my $xlsx     = "patch_status_" . $date . ".xlsx";
 my $workbook = Excel::Writer::XLSX->new($xlsx);
 
 # create format objects
+# Default formatting
 my $format = $workbook->add_format( border => 1 );
+# Bold for headers
 my $bold   = $workbook->add_format( border => 1, bold => 1 );
+# Red for what needs attention
 my $red    = $workbook->add_format( border => 1, bg_color => 'red', );
 
 # Create new worksheets

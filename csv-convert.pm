@@ -3,7 +3,6 @@ use strict;
 use warnings;
 use POSIX 'strftime';
 use Text::CSV;
-use File::ReadBackwards;
 use Excel::Writer::XLSX;
 
 my $file = $ARGV[0] or die "Please supply a CSV file as a script argument.\n";
@@ -17,17 +16,17 @@ my $date   = strftime '%Y-%m-%d', localtime;
 my $xlsx   = "patch_status_" . $date . ".xlsx";
 
 # DO NOT uncomment this until ready to roll!
-# system("sed -i.bak -e '1,22d' patch_status.csv");
+# system("sed -i.bak -e '1,22d' $file");
 
-# open input file,reading backwards
-tie *BW, 'File::ReadBackwards', $file or die "Could not open '$file' $!\n";
+# open input file
+open (my $data, '<', $file) or die "Could not open '$file' $!\n";
 
 # open output files
 open $out1, '>', "$csv1" or die "Could not open '$csv1' $!\n";
 open $out2, '>', "$csv2" or die "Could not open '$csv2' $!\n";
 #open $out3, '>', "$xlsx" or die "Could not open '$xlsx' $!\n";
 
-while (my $line = <BW>) {
+while (my $line = <$data>) {
 	unless ($line =~ /^$/) {
 		chomp($line);
 		push (@csv0, $line);
@@ -36,10 +35,8 @@ while (my $line = <BW>) {
 
 my $csv0 = join("\n", @csv0);
 my @blocks = split(/$worksheet1/, $csv0);
-@csv1 = split("\n", $blocks[0]);
-@csv2 = split("\n", $blocks[1]);
-@csv1 = reverse(@csv1);
-@csv2 = reverse(@csv2);
+@csv1 = split("\n", $blocks[1]);
+@csv2 = split("\n", $blocks[0]);
 foreach (@csv1) {
 	print $out1 "$_\n";
 }

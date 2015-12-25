@@ -124,25 +124,28 @@ my $worksheet1 = $workbook->add_worksheet($block1);
 my $worksheet2 = $workbook->add_worksheet($block2);
 
 # write hashrefs to worksheets
-$worksheet1->write_col( 0, 0, $csv1_ref, $format );
+#$worksheet1->write_col( 0, 0, $csv1_ref, $format );
 $worksheet2->write_col( 0, 0, $csv2_ref, $format );
 
 # Define worksheet formatting
-$worksheet1->set_row( 0, undef, $bold );
 $worksheet2->set_row( 0, undef, $bold );
-$worksheet1->set_column( 0, 10, 22 );
 $worksheet2->set_column( 0, 8,  22 );
 $worksheet1->autofilter( 0, 0, 0, 10 );
 $worksheet1->filter_column( 'G', 'x == 0' );
-$worksheet1->conditional_formatting(
-    0, 6,
-    $last_row1,
-    6,
-    {
-        type     => 'cell',
-        criteria => 'equal to',
-        value    => 0,
-        format   => $red,
-    }
-);
+
+# Hide rows that are of no concern
+# Show and format the rest
+my $hide_row = 0;
+for my $hide_row_data ( @rows1 ) {
+	my $installed = $hide_row_data->[6];
+	if ( $installed eq 'Installed' ) {
+		$worksheet1->set_row( 0, undef, $bold );
+	} elsif ( $installed eq 0 ) {
+		$worksheet1->set_row( $hide_row, undef, $red );
+	} else {
+		$worksheet1->set_row( $hide_row, undef, undef, 1 );
+	}
+	$worksheet1->write( $hide_row++, 0, $hide_row_data );
+	$worksheet1->set_column( 0, 10, 22 );
+}
 

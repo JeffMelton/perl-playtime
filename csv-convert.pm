@@ -4,7 +4,6 @@ use warnings;
 use POSIX 'strftime';
 use Excel::Writer::XLSX;
 use Text::CSV;
-use Data::Dumper;
 
 my $file = $ARGV[0] or die "Please supply a CSV file as a script argument.\n";
 
@@ -123,8 +122,7 @@ my $red    = $workbook->add_format( border => 1, bg_color => 'red', );
 my $worksheet1 = $workbook->add_worksheet($block1);
 my $worksheet2 = $workbook->add_worksheet($block2);
 
-# write hashrefs to worksheets
-#$worksheet1->write_col( 0, 0, $csv1_ref, $format );
+# write array ref to worksheet 2
 $worksheet2->write_col( 0, 0, $csv2_ref, $format );
 
 # Define worksheet formatting
@@ -134,7 +132,8 @@ $worksheet1->autofilter( 0, 0, 0, 10 );
 $worksheet1->filter_column( 'G', 'x == 0' );
 
 # Hide rows that are of no concern
-# Show and format the rest
+# Show and format the rest, writing
+# to worksheet 1
 my $hide_row = 0;
 for my $hide_row_data ( @rows1 ) {
 	my $installed = $hide_row_data->[6];

@@ -148,4 +148,5 @@ for my $hide_row_data ( @rows1 ) {
 	$worksheet1->set_column( 0, 10, 22 );
 }
 
->>>>>>> 3d70f907b764e9ecb097f48bcd6313a71a34e70d
+# clean up
+unlink $csv1, $csv2;

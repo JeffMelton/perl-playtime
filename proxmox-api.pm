@@ -48,13 +48,13 @@ my $hostpass;
 my $vmid;
 my $status;
 
-my $usage = <<'END_MESSAGE';
+my $usage = <<'END_USAGE';
 Usage: $0
 Required parameters:
 	--user		<user>
 	--password	<password>
 	--action 	< NextID | NextIP | Create | Delete | Status | Start | Stop >
-END_MESSAGE
+END_USAGE
 
 GetOptions(
     'user=s'     => \$user,
@@ -163,11 +163,11 @@ elsif ( $action eq 'Delete' ) {
 elsif ( $action eq 'Status' ) {
     my $status_chosen = 0;
     do {
-        my $query = <<'END_MESSAGE';
+        my $query = <<'END_QUERY';
 Do you want to check the status of:
 1) one container or,
 2) all containers?
-END_MESSAGE
+END_QUERY
         print $query;
         print "Enter 1 or 2: ";
         chomp( my $response = <> );

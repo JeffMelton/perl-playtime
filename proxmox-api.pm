@@ -11,8 +11,11 @@
 # Hashtag YMMV
 #
 # Usage:
-# perl ./proxmox-api.pm --user < user@realm > --password < password > \
-#		--action < NextID | NextIP | Create | Delete | Status | Start | Stop >
+#   perl ./proxmox-api.pm --action < NextID | NextIP | Create | Delete | Status | Start | Stop >
+
+# There must be in the same directory a proxmox.properties file containing:
+#   user=user@realm
+#   password=password
 
 # Comment the following line if you're using a self-signed cert
 use strict;
@@ -24,6 +27,7 @@ use URI::Escape;
 use Getopt::Long;
 use Term::ReadKey;
 use LWP::UserAgent;
+use Config::Properties;
 use JSON qw(decode_json);
 use HTTP::Request::Common qw(POST);
 
@@ -40,8 +44,6 @@ my $lxc_endpoint     = $nodes_endpoint . "/pve/lxc";
 # my $pools_endpoint   = "/pools";
 # my $storage_endpoint = "/storage";
 
-my $user;
-my $password;
 my $action;
 my $hostname;
 my $hostpass;
@@ -50,17 +52,36 @@ my $status;
 
 my $usage = <<'END_USAGE';
 Usage: $0
+Usage: $0
 Required parameters:
-	--user		<user>
-	--password	<password>
 	--action 	< NextID | NextIP | Create | Delete | Status | Start | Stop >
+	
+There must be in the same directory a proxmox.properties file containing:
+    user=user@realm
+    password=password
 END_USAGE
 
-GetOptions(
-    'user=s'     => \$user,
-    'password=s' => \$password,
-    'action=s'   => \$action,
-) or die "$usage\n";
+GetOptions( 'action=s' => \$action, ) or die "$usage\n";
+
+if ( !-f $properties_file ) {
+    die "Property file " . $properties_file . " not found.\n";
+}
+
+open( PROPS, '<', $properties_file )
+  or die "Unable to open " . $properties_file;
+my $props = new Config::Properties();
+$props->load(*PROPS);
+
+my $user     = $props->getProperty("user");
+my $password = $props->getProperty("password");
+
+if (   !defined $user
+    || $user eq ""
+    || !defined $password
+    || $password eq "" )
+{
+    die "Missing values for user or password properties.\n";
+}
 
 # Uncomment this block if you're using a self-signed cert
 # my %ssl_opts = (

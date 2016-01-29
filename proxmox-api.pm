@@ -52,7 +52,6 @@ my $status;
 
 my $usage = <<'END_USAGE';
 Usage: $0
-Usage: $0
 Required parameters:
 	--action 	< NextID | NextIP | Create | Delete | Status | Start | Stop >
 	

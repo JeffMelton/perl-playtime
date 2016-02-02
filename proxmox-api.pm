@@ -1,66 +1,143 @@
 #!/usr/bin/env perl
 
-# This is an interactive tool that implements a few of the Proxmox 4.x API
-# functions. See Usage and inline comments below. There are a number of static
-# values assigned that you may wish to change.
-#
-# While there is another Perl project that seeks to aid interaction with the
-# Proxmox API, I found it easier, more instructive, and ultimately more useful
-# for my own purposes to build my own tool.
-#
-# Hashtag YMMV
-#
-# Usage:
-#   perl ./proxmox-api.pm --action < NextID | NextIP | Create | Delete | Status | Start | Stop >
+=head1 NAME
 
-# There must be in the same directory a proxmox.properties file containing:
-#   user=user@realm
-#   password=password
+proxmox-api - An interactive tool that can interact with the Proxmox 4.x API
 
-# Comment the following line if you're using a self-signed cert
-use strict;
+A few things you'll need to note before using this:
+
+=item If you're using a self-signed certificate, be sure and uncomment the %ssl_opts hash
+
+=item You'll need to fill in or modify the relevant IP address information: ip_range, ip_block and gw
+
+=item I haven't implemented any functions yet for the pools and storage endpoints
+
+=head1 SYNOPSIS
+
+proxmox-api [options]
+
+Help Options:
+
+  --help      Show help information
+
+  --manual    Show the manual
+
+  --action    Which API action you'd like to perform < Create | Delete | Status | Start | Stop | NextID | NextIP >
+
+=cut
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<--help>
+
+=item B<--manual>
+
+=back
+
+=cut
+
+=head1 ARGUMENTS
+
+--action < Create | Delete | Status | Start | Stop | NextID | NextIP >
+
+=cut
+
+=head1 EXAMPLES
+
+Create a container:
+    proxmox-api.pm --action Create
+
+Delete a container:
+    proxmox-api.pm --action Delete
+
+Check container status (one or all):
+    proxmox-api.pm --action Status
+    
+Start a container:
+    proxmox-api.pm --action Start
+
+Stop a container:
+    proxmox-api.pm --action Stop
+
+List the next available container ID:
+    proxmox-api.pm --action NextID
+
+List the next available IP address:
+    proxmox-api.pm --action NextIP
+
+=cut
+
+=head1 DESCRIPTION
+
+This commandline utility allows for interactive, one-off actions against the Proxmox 4.x API.
+There must exist in the same directory a proxmox.properties file containing:
+    user=user@realm
+    password=password
+
+=cut
+
+=head1 AUTHOR
+
+Jeff Melton
+--
+jeff@themeltonplantation.com
+
+=cut
+
 use warnings;
+no warnings "experimental";
 
 use Net::IP;
 use Net::Ping;
 use URI::Escape;
-use Getopt::Long;
 use Term::ReadKey;
 use LWP::UserAgent;
 use Config::Properties;
+use feature qw(switch);
 use JSON qw(decode_json);
+use Pod::Usage qw(pod2usage);
+use Getopt::Long qw(GetOptions);
 use HTTP::Request::Common qw(POST);
 
-# Be sure and fill in your Proxmox node's hostname or IP address
-my $api_host         = "https://{your host here}:8006/api2/json";
-my $access_endpoint  = "/access/ticket";
-my $cluster_endpoint = "/cluster";
-my $nodes_endpoint   = "/nodes";
-my $lxc_endpoint     = $nodes_endpoint . "/pve/lxc";
-
-# I haven't implemented any functions off these endpoints yet, but they're here
-# because I might... someday.
-#
-# my $pools_endpoint   = "/pools";
-# my $storage_endpoint = "/storage";
-
+my $vmid;
+my $help;
+my $status;
 my $action;
+my $manual;
+my %options;
 my $hostname;
 my $hostpass;
-my $vmid;
-my $status;
+my $nodes_endpoint = '/nodes';
 
-my $usage = <<'END_USAGE';
-Usage: $0
-Required parameters:
-	--action 	< NextID | NextIP | Create | Delete | Status | Start | Stop >
-	
-There must be in the same directory a proxmox.properties file containing:
-    user=user@realm
-    password=password
-END_USAGE
+# my $pools_endpoint   = '/pools';
+# my $storage_endpoint = '/storage';
+my $cluster_endpoint = '/cluster';
+my $access_endpoint  = '/access/ticket';
+my $properties_file  = 'proxmox.properties';
+my $lxc_endpoint     = $nodes_endpoint . '/pve/lxc';
+my $api_host         = 'https://{your host here}/api2/json';
 
-GetOptions( 'action=s' => \$action, ) or die "$usage\n";
+GetOptions(
+    \%options,
+    'a|action:s' => \$action,
+    'help|h'     => \$help,
+    'manual|man' => \$manual,
+) || pod2usage( -verbose => 2 );
+
+pod2usage( -verbose => 1 ) if $help;
+pod2usage( -verbose => 2 ) if $manual;
+pod2usage( -verbose => 2, -message => "$0: Too many arguments.\n" )
+  if ( @ARGV > 1 );
+pod2usage(
+    {
+        -message => "Syntax error.",
+        -verbose => 2,
+        -exitval => 2,
+        -output  => \*STDERR
+    }
+) unless ( defined( $action || $help || $manual ) );
 
 if ( !-f $properties_file ) {
     die "Property file " . $properties_file . " not found.\n";
@@ -82,159 +159,120 @@ if (   !defined $user
     die "Missing values for user or password properties.\n";
 }
 
-# Uncomment this block if you're using a self-signed cert
 # my %ssl_opts = (
-#    ssl_opts => {
-#        SSL_verify_mode => SSL_VERIFY_NONE,
-#        verify_hostname => 0,
-#    },
+# ssl_opts => {
+# SSL_verify_mode => SSL_VERIFY_NONE,
+# verify_hostname => 0,
+# },
 # );
-#
-# Also uncomment this, and comment the next
 # my $ua = LWP::UserAgent->new(%ssl_opts);
 my $ua = LWP::UserAgent->new();
 
+my $next_ip;
+my $next_id;
 my $pve_auth_cookie;
 my @pve_auth_cookie;
 my $csrf_prevention_token;
 my @csrf_prevention_token;
-my $next_id;
 
-# I'm using a static block of IP addresses that are available to our
-# containers. Change as needed.
-my $ip_range = "xxx.xx.xxx.";
-my @ip_block = qw( xxx xxx xxx xxx xxx xxx xxx );
-my $next_ip;
-
-# Parse arguments to call action subroutines
-# I feel like I need to clean up this section, but it works for now.
-if ( $action eq 'NextID' ) {
-    &Access( $user, $password );
-    &NextID(@pve_auth_cookie);
-}
-elsif ( $action eq 'NextIP' ) {
-    &Access( $user, $password );
-    &NextIP();
-}
-elsif ( $action eq 'Create' ) {
-    my $id_chosen = 0;
-    do {
-        print "Do you know the VM ID you'd like to use? ";
-        chomp( my $response = <> );
-        if ( $response eq 'no' ) {
-            &Access( $user, $password );
-            &NextID(@pve_auth_cookie);
-            $id_chosen = 1;
-        }
-        elsif ( $response eq 'yes' ) {
-            print "Please enter the ID: ";
-            chomp( $vmid = <> );
-            if ( length $vmid ne 3 || $vmid lt 100 ) {
-                print "You must select a 3-digit ID greater than 100.\n";
-            }
-            else {
-                $next_id   = $vmid;
-                $id_chosen = 1;
-            }
-        }
-        else {
-            print "Please enter 'yes' or 'no'.\n";
-        }
-    } until ( $id_chosen == 1 );
-    print "Enter the hostname: ";
-    chomp( $hostname = <> );
-    print "Enter the root password (will not echo): ";
-    ReadMode( noecho => STDIN );
-    chomp( $hostpass = <> );
-    print "\n";
-    ReadMode( restore => STDIN );
-    &Access( $user, $password );
-    &NextIP();
-    $vmid = $next_id;
-    &Create( $hostname, $hostpass, $next_id, $next_ip, %net0 );
-    do {
-        sleep(15);
-        &StatusOne($vmid);
-    } until ( defined $status );
-    print "Would you like to start the VM now? ";
-    chomp( $response = <> );
-    if ( $response eq 'yes' ) {
-        &Start($vmid);
-    }
-    else {
-        exit 1;
-    }
-}
-elsif ( $action eq 'Delete' ) {
-    print "What container ID would you like to delete? ";
-    chomp( $vmid = <> );
-    unless ( $vmid =~ /^[0-9]{3}$/ ) {
-        print "You must select a 3-digit ID greater than 100.\n";
-        print "Listing all containers...\n";
-        &Access( $user, $password );
-        &StatusAll();
-    }
-    else {
-        &Access( $user, $password );
-        &StatusOne($vmid);
-        &Delete( $vmid, $status );
-    }
-}
-elsif ( $action eq 'Status' ) {
-    my $status_chosen = 0;
-    do {
-        my $query = <<'END_QUERY';
+my $query = <<'QUERY';
 Do you want to check the status of:
 1) one container or,
 2) all containers?
-END_QUERY
-        print $query;
-        print "Enter 1 or 2: ";
-        chomp( my $response = <> );
-        if ( $response == 1 ) {
-            print "Which VM? ";
-            chomp( $vmid = <> );
-            if ( length $vmid ne 3 || $vmid lt 100 ) {
-                print "You must select a 3-digit ID greater than 100.\n";
-            }
-            else {
-                &Access( $user, $password );
-                &StatusOne($vmid);
-                $status_chosen = 1;
-            }
+QUERY
+my $ip_range = "xxx.xxx.xxx.";
+my @ip_block = qw( xxx xxx xxx xxx xxx xxx xxx );
+
+# Parse arguments to call action subroutines
+given ($action) {
+    when (/nextid/i) {
+        &NextID( $user, $password, @pve_auth_cookie );
+    }
+    when (/nextip/i) {
+        &NextIP( $user, $password );
+    }
+    when (/create/i) {
+        my $response;
+        {
+            print "Do you know the VM ID you'd like to use (yes or no)? ";
+            chomp( $response = <> );
+            redo unless $response =~ /yes|no/i;
         }
-        elsif ( $response == 2 ) {
-            &Access( $user, $password );
-            &StatusAll($vmid);
-            $status_chosen = 1;
+        if ( $response =~ /no/i ) {
+            &NextID( $user, $password, @pve_auth_cookie );
         }
         else {
-            print "Please select either option 1 or 2.\n";
+            {
+                print "What container number would you like to use? ";
+                chomp( $vmid = <> );
+                &Validate($vmid);
+            }
+            $next_id = $vmid;
         }
-    } until ( $status_chosen == 1 );
-}
-elsif ( $action eq 'Start' ) {
-    print "What container ID would you like to start? ";
-    chomp( $vmid = <> );
-    if ( length $vmid ne 3 && $vmid lt 100 ) {
-        print "You must select a 3-digit ID greater than 100.\n";
+        print "Enter the hostname: ";
+        chomp( $hostname = <> );
+        print "Enter the root password (will not echo): ";
+        ReadMode( noecho => STDIN );
+        chomp( $hostpass = <> );
+        print "\n";
+        ReadMode( restore => STDIN );
+        &NextIP( $user, $password );
+        $vmid = $next_id;
+        &Create(
+            $user,    $password, $hostname, $hostpass,
+            $next_id, $next_ip,  %net0
+        );
+        do {
+            sleep(15);
+            &StatusOne( $user, $password, $vmid );
+        } until ( defined $status );
+        print "Would you like to start the VM now? ";
+        chomp( $response = <> );
+        if ( $response eq 'yes' ) {
+            &Start( $user, $password, $vmid );
+        }
+        else {
+            exit 1;
+        }
     }
-    else {
-        &Access( $user, $password );
-        &StatusOne($vmid);
-        &Start( $vmid, $status );
+    when (/delete/i) {
+        print "What container ID would you like to delete? ";
+        chomp( $vmid = <> );
+        &Validate($vmid);
+        &StatusOne( $user, $password, $vmid );
+        &Delete( $user, $password, $vmid, $status );
     }
-}
-elsif ( $action eq 'Stop' ) {
-    print "What container ID would you like to stop? ";
-    chomp( $vmid = <> );
-    if ( length $vmid ne 3 && $vmid lt 100 ) {
-        print "You must select a 3-digit ID greater than 100.\n";
+    when (/status/i) {
+        my $response;
+        {
+            print $query;
+            print "Enter 1 or 2: ";
+            chomp( $response = <> );
+            redo unless ( length $response eq 1 && $response =~ /[12]/ );
+        }
+        if ( $response == 1 ) {
+            print "What container status would you like to check? ";
+            chomp( $vmid = <> );
+            &Validate($vmid);
+            &StatusOne( $user, $password, $vmid );
+        }
+        else {
+            &StatusAll( $user, $password );
+        }
     }
-    else {
-        &Access( $user, $password );
-        &StatusOne($vmid);
-        &Stop( $vmid, $status );
+    when (/start/i) {
+        print "What container ID would you like to start? ";
+        chomp( $vmid = <> );
+        &Validate($vmid);
+        &StatusOne( $user, $password, $vmid );
+        &Start( $user, $password, $vmid, $status );
+    }
+    when (/stop/i) {
+        print "What container ID would you like to stop? ";
+        chomp( $vmid = <> );
+        &Validate($vmid);
+        &StatusOne( $user, $password, $vmid );
+        &Stop( $user, $password, $vmid, $status );
     }
 }
 
@@ -244,7 +282,6 @@ sub Access {
       $api_host . $access_endpoint . "?username=$user" . "&password=$password";
     my $access_response = $ua->post($access_url);
     if ( $access_response->is_success ) {
-        my $content = $access_response->decoded_content;
         my $login_ticket_data =
           decode_json( $access_response->decoded_content );
         my $ticket = $login_ticket_data->{data};
@@ -253,7 +290,6 @@ sub Access {
     }
     else {
         print "Access failed.\n";
-        my $content = $access_response->decoded_content;
         my $login_ticket_data =
           decode_json( $access_response->decoded_content );
         print $access_response->request->as_string;
@@ -265,13 +301,20 @@ sub Access {
     return;
 }
 
+# Validate container ID
+sub Validate {
+    {
+        redo unless ( $vmid >= 100 );
+    }
+}
+
 # Create a new container
-# Again with the static values. Tweak as you see fit.
 sub Create {
+    &Access( $user, $password );
     my %net0 = (
         bridge => 'vmbr0',
         name   => 'eth0',
-        gw     => 'xxx.xxx.xxx.xxx',
+        gw     => '{your gateway here}',
         ip6    => 'dhcp',
     );
     my @net0;
@@ -284,23 +327,15 @@ sub Create {
     $net0 = uri_escape($net0);
 
     # has to be url-encoded separately, then added to the net0 params
-    # Note that Proxmox requires the IP address in the form "IPv4/CIDR" and
-    # that I'm using IPv4 only
-    my $ip = ',ip=' . $next_ip . '/24';
+    my $ip = ',ip=' . $next_ip;
     $ip   = uri_escape($ip);
     $net0 = $net0 . $ip;
 
     my %create_args = (
-        vmid     => $next_id,
-        hostname => $hostname,
-
-        # We use a SAN in production, but the test environment uses local
-        # storage. You may wish to change this value.
-        storage  => 'local',
-        password => $hostpass,
-
-        # This is a static value that you may wish to change to fit your
-        # environment
+        vmid       => $next_id,
+        hostname   => $hostname,
+        storage    => 'local',
+        password   => $hostpass,
         ostemplate => 'local:vztmpl/debian-8.0-standard_8.0-1_amd64.tar.gz',
     );
     my @create_args;
@@ -332,6 +367,7 @@ sub Create {
 
 # Delete a container
 sub Delete {
+    &Access( $user, $password );
     if ( $status ne 'stopped' ) {
         print "This container is running. Would you like to stop it first? ";
         chomp( my $response = <> );
@@ -377,10 +413,10 @@ sub Delete {
 
 # Get next available container ID
 sub NextID {
+    &Access( $user, $password );
     my $cluster_url = $api_host . $cluster_endpoint . "/nextid";
     my $cluster_response = $ua->get( $cluster_url, @pve_auth_cookie );
     if ( $cluster_response->is_success ) {
-        my $content      = $cluster_response->decoded_content;
         my $next_id_data = decode_json( $cluster_response->decoded_content );
         $next_id = $next_id_data->{data};
         print "Next ID is $next_id.\n";
@@ -395,18 +431,19 @@ sub NextID {
 
 # Get next available IP address
 sub NextIP {
+    &Access( $user, $password );
     my @available_ips;
+    my $partial_ip;
     my $complete_ip;
 
-    foreach my $partial_ip (@ip_block) {
-        $complete_ip = $ip_range . $partial_ip;
+    foreach $partial_ip (@ip_block) {
+        $complete_ip = $ip_range . $partial_ip . '/24';
         push( @available_ips, $complete_ip );
     }
 
     my $nextip_url = $api_host . $lxc_endpoint;
     my $nextip_response = $ua->get( $nextip_url, @pve_auth_cookie );
     if ( $nextip_response->is_success ) {
-        my $content      = $nextip_response->decoded_content;
         my $content_data = decode_json( $nextip_response->decoded_content );
         foreach my $container ( @{ $content_data->{data} } ) {
             my $container_id = $container->{vmid};
@@ -414,7 +451,6 @@ sub NextIP {
               $api_host . $lxc_endpoint . "/$container_id/config";
             my $config_response = $ua->get( $config_url, @pve_auth_cookie );
             if ( $config_response->is_success ) {
-                my $config_content = $config_response->decoded_content;
                 my $config_content_data =
                   decode_json( $config_response->decoded_content );
                 local $net0_string = $config_content_data->{data}->{net0};
@@ -444,10 +480,10 @@ sub NextIP {
 
 # Get status of all containers
 sub StatusAll {
+    &Access( $user, $password );
     my $status_url = $api_host . $lxc_endpoint;
     my $status_response = $ua->get( $status_url, @pve_auth_cookie );
     if ( $status_response->is_success ) {
-        my $content      = $status_response->decoded_content;
         my $content_data = decode_json( $status_response->decoded_content );
         foreach my $container ( @{ $content_data->{data} } ) {
             print $container->{vmid} . ". "
@@ -466,10 +502,10 @@ sub StatusAll {
 
 # Get status of given container
 sub StatusOne {
+    &Access( $user, $password );
     my $status_url = $api_host . $lxc_endpoint . "/$vmid/status/current";
     my $status_response = $ua->get( $status_url, @pve_auth_cookie );
     if ( $status_response->is_success ) {
-        my $content      = $status_response->decoded_content;
         my $content_data = decode_json( $status_response->decoded_content );
         local $name = $content_data->{data}->{name};
         $status = $content_data->{data}->{status};
@@ -487,6 +523,7 @@ sub StatusOne {
 
 # Start given container
 sub Start {
+    &Access( $user, $password );
     if ( $status eq 'running' ) {
         print "This container is already running!\n";
         exit 1;
@@ -513,6 +550,7 @@ sub Start {
 
 # Stop given container
 sub Stop {
+    &Access( $user, $password );
     if ( $status eq 'stopped' ) {
         print "This container is already stopped!\n";
         exit 1;
@@ -536,4 +574,3 @@ sub Stop {
     }
     return;
 }
-

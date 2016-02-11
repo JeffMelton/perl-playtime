@@ -1,91 +1,5 @@
 #!/usr/bin/env perl
 
-=head1 NAME
-
-proxmox-api - An interactive tool that can interact with the Proxmox 4.x API
-
-A few things you'll need to note before using this:
-
-=item If you're using a self-signed certificate, be sure and uncomment the %ssl_opts hash
-
-=item You'll need to fill in or modify the relevant IP address information: ip_range, ip_block and gw
-
-=item I haven't implemented any functions yet for the pools and storage endpoints
-
-=head1 SYNOPSIS
-
-proxmox-api [options]
-
-Help Options:
-
-  --help      Show help information
-
-  --manual    Show the manual
-
-  --action    Which API action you'd like to perform < Create | Delete | Status | Start | Stop | NextID | NextIP >
-
-=cut
-
-=head1 OPTIONS
-
-=over 8
-
-=item B<--help>
-
-=item B<--manual>
-
-=back
-
-=cut
-
-=head1 ARGUMENTS
-
---action < Create | Delete | Status | Start | Stop | NextID | NextIP >
-
-=cut
-
-=head1 EXAMPLES
-
-Create a container:
-    proxmox-api.pm --action Create
-
-Delete a container:
-    proxmox-api.pm --action Delete
-
-Check container status (one or all):
-    proxmox-api.pm --action Status
-    
-Start a container:
-    proxmox-api.pm --action Start
-
-Stop a container:
-    proxmox-api.pm --action Stop
-
-List the next available container ID:
-    proxmox-api.pm --action NextID
-
-List the next available IP address:
-    proxmox-api.pm --action NextIP
-
-=cut
-
-=head1 DESCRIPTION
-
-This commandline utility allows for interactive, one-off actions against the Proxmox 4.x API.
-There must exist in the same directory a proxmox.properties file containing:
-    user=user@realm
-    password=password
-
-=cut
-
-=head1 AUTHOR
-
-Jeff Melton
---
-jeff@themeltonplantation.com
-
-=cut
-
 use warnings;
 no warnings "experimental";
 
@@ -109,14 +23,12 @@ my $manual;
 my %options;
 my $hostname;
 my $hostpass;
-my $nodes_endpoint = '/nodes';
-
-# my $pools_endpoint   = '/pools';
-# my $storage_endpoint = '/storage';
+my $nodes_endpoint   = '/nodes';
+my $pools_endpoint   = '/pools';
+my $storage_endpoint = '/storage';
 my $cluster_endpoint = '/cluster';
 my $access_endpoint  = '/access/ticket';
 my $properties_file  = 'proxmox.properties';
-my $lxc_endpoint     = $nodes_endpoint . '/pve/lxc';
 my $api_host         = 'https://{your host here}/api2/json';
 
 GetOptions(
@@ -205,6 +117,7 @@ given ($action) {
             {
                 print "What container number would you like to use? ";
                 chomp( $vmid = <> );
+                redo unless ( length $vmid > 0 );
                 &Validate($vmid);
             }
             $next_id = $vmid;
@@ -218,9 +131,8 @@ given ($action) {
         ReadMode( restore => STDIN );
         &NextIP( $user, $password );
         $vmid = $next_id;
-        &Create(
-            $user,    $password, $hostname, $hostpass,
-            $next_id, $next_ip,  %net0
+        &Create( $user, $password, $hostname, $hostpass, $lowest_node,
+            $next_id, $next_ip, %net0 );
         );
         do {
             sleep(15);
@@ -238,6 +150,7 @@ given ($action) {
     when (/delete/i) {
         print "What container ID would you like to delete? ";
         chomp( $vmid = <> );
+        redo unless ( length $vmid > 0 );
         &Validate($vmid);
         &StatusOne( $user, $password, $vmid );
         &Delete( $user, $password, $vmid, $status );
@@ -253,6 +166,7 @@ given ($action) {
         if ( $response == 1 ) {
             print "What container status would you like to check? ";
             chomp( $vmid = <> );
+			redo unless ( length $vmid > 0 );
             &Validate($vmid);
             &StatusOne( $user, $password, $vmid );
         }
@@ -263,6 +177,7 @@ given ($action) {
     when (/start/i) {
         print "What container ID would you like to start? ";
         chomp( $vmid = <> );
+        redo unless ( length $vmid > 0 );
         &Validate($vmid);
         &StatusOne( $user, $password, $vmid );
         &Start( $user, $password, $vmid, $status );
@@ -270,6 +185,7 @@ given ($action) {
     when (/stop/i) {
         print "What container ID would you like to stop? ";
         chomp( $vmid = <> );
+        redo unless ( length $vmid > 0 );
         &Validate($vmid);
         &StatusOne( $user, $password, $vmid );
         &Stop( $user, $password, $vmid, $status );
@@ -298,6 +214,59 @@ sub Access {
     @pve_auth_cookie = ( 'Cookie' => 'PVEAuthCookie=' . $pve_auth_cookie );
     @csrf_prevention_token =
       ( 'CSRFPreventionToken' => $csrf_prevention_token );
+    return;
+}
+
+# Check node usage
+sub Usage {
+    &Access( $user, $password );
+    my $usage_url = $api_host . $cluster_endpoint . "/resources?type=node";
+    my $usage_response = $ua->get( $usage_url, @pve_auth_cookie );
+    if ( $usage_response->is_success ) {
+        my %resource_hash = ();
+        my $usage_data    = decode_json( $usage_response->decoded_content );
+        foreach my $node ( @{ $usage_data->{data} } ) {
+            my $node_name = $node->{node};
+            my $node_usage_url =
+              $api_host . $nodes_endpoint . "/$node_name/status";
+            my $node_usage_response =
+              $ua->get( $node_usage_url, @pve_auth_cookie );
+            if ( $node_usage_response->is_success ) {
+                my $node_usage_data =
+                  decode_json( $node_usage_response->decoded_content );
+                my $node_memory_usage;
+                foreach my $node_usage ( $node_usage_data->{data} ) {
+                    $node_memory_usage = $node_usage->{memory}{used};
+                    my $node_load_average = sprintf(
+                        "%.2f",
+                        (
+                            $node_usage->{loadavg}->[0] +
+                              $node_usage->{loadavg}->[1] +
+                              $node_usage->{loadavg}->[2]
+                        ) / 3
+                    );
+                }
+                $resource_hash{$node_name} = $node_memory_usage;
+            }
+            else {
+                print "Failed to get single node usage.\n";
+                print $node_usage_response->request->as_string;
+                print $node_usage_response->as_string;
+            }
+        }
+        my @lowest_usage;
+        foreach $key ( sort { $resource_hash{$a} <=> $resource_hash{$b} }
+            keys %resource_hash )
+        {
+            push( @lowest_usage, $key );
+        }
+        $lowest_node = shift @lowest_usage;
+    }
+    else {
+        print "Failed to get cluster usage.\n";
+        print $usage_response->request->as_string;
+        print $usage_response->as_string;
+    }
     return;
 }
 
@@ -345,7 +314,12 @@ sub Create {
     }
     local $args = join "&", @create_args;
 
-    my $create_url = $api_host . $lxc_endpoint . "?$args" . "&net0=$net0";
+    my $create_url =
+        $api_host
+      . $nodes_endpoint
+      . "/$lowest_node/lxc"
+      . "?$args"
+      . "&net0=$net0";
     my $create_response =
       $ua->request( POST $create_url, @pve_auth_cookie,
         @csrf_prevention_token );
@@ -353,7 +327,17 @@ sub Create {
         $vmid = $next_id;
         do {
             sleep(15);
-            &StatusOne($vmid);
+            my $status_url =
+                $api_host
+              . $nodes_endpoint
+              . "/$lowest_node/lxc"
+              . "/$vmid/status/current";
+            my $status_response = $ua->get( $status_url, @pve_auth_cookie );
+            if ( $status_response->is_success ) {
+                my $content_data =
+                  decode_json( $status_response->decoded_content );
+                local $name = $content_data->{data}->{name};
+                $status = $content_data->{data}->{status};
         } until ( defined $status );
         print "Container $next_id created!\n";
     }
@@ -377,7 +361,8 @@ sub Delete {
                 sleep(5);
                 &StatusOne($vmid);
             } until ( $status eq 'stopped' );
-            my $delete_url = $api_host . $lxc_endpoint . "/$vmid";
+            my $delete_url =
+              $api_host . $nodes_endpoint . "/$node/lxc" . "/$vmid";
             my $delete_response =
               $ua->delete( $delete_url, @pve_auth_cookie,
                 @csrf_prevention_token );
@@ -396,7 +381,7 @@ sub Delete {
         }
     }
     else {
-        my $delete_url = $api_host . $lxc_endpoint . "/$vmid";
+        my $delete_url = $api_host . $nodes_endpoint . "/$node/lxc" . "/$vmid";
         my $delete_response =
           $ua->delete( $delete_url, @pve_auth_cookie, @csrf_prevention_token );
         if ( $delete_response->is_success ) {
@@ -441,12 +426,13 @@ sub NextIP {
         push( @available_ips, $complete_ip );
     }
 
-    my $nextip_url = $api_host . $lxc_endpoint;
+    my $nextip_url = $api_host . $cluster_endpoint . "/resources?type=vm";
     my $nextip_response = $ua->get( $nextip_url, @pve_auth_cookie );
     if ( $nextip_response->is_success ) {
         my $content_data = decode_json( $nextip_response->decoded_content );
         foreach my $container ( @{ $content_data->{data} } ) {
             my $container_id = $container->{vmid};
+            my $node         = $container->{node};
             my $config_url =
               $api_host . $lxc_endpoint . "/$container_id/config";
             my $config_response = $ua->get( $config_url, @pve_auth_cookie );
@@ -454,9 +440,13 @@ sub NextIP {
                 my $config_content_data =
                   decode_json( $config_response->decoded_content );
                 local $net0_string = $config_content_data->{data}->{net0};
-                my %net0 = split /[,=]/, $net0_string;
-                if ( grep { $_ eq $net0{ip} } @available_ips ) {
-                    shift @available_ips;
+                if ( defined $net0_string ) {
+                    my %net0 = split /[,=]/, $net0_string;
+                    if ( $net0{ip} ~~ @available_ips ) {
+                        my $index = 0;
+                        $index++ until $available_ips[$index] eq $net0{ip};
+                        splice( @available_ips, $index, 1 );
+                    }
                 }
             }
             else {
@@ -481,7 +471,7 @@ sub NextIP {
 # Get status of all containers
 sub StatusAll {
     &Access( $user, $password );
-    my $status_url = $api_host . $lxc_endpoint;
+    my $status_url = $api_host . $cluster_endpoint . "/resources?type=vm";
     my $status_response = $ua->get( $status_url, @pve_auth_cookie );
     if ( $status_response->is_success ) {
         my $content_data = decode_json( $status_response->decoded_content );
@@ -503,17 +493,28 @@ sub StatusAll {
 # Get status of given container
 sub StatusOne {
     &Access( $user, $password );
-    my $status_url = $api_host . $lxc_endpoint . "/$vmid/status/current";
-    my $status_response = $ua->get( $status_url, @pve_auth_cookie );
-    if ( $status_response->is_success ) {
-        my $content_data = decode_json( $status_response->decoded_content );
+    my $status_all = $api_host . $cluster_endpoint . "/resources?type=vm";
+    my $status_all_response = $ua->get( $status_all, @pve_auth_cookie );
+    if ( $status_all_response->is_success ) {
+        my $content_data = decode_json( $status_all_response->decoded_content );
+        foreach my $container ( @{ $content_data->{data} } ) {
+            if ( $container->{vmid} eq $vmid ) {
+                $node = $container->{node};
+            }
+        }
+    }
+    my $status_one =
+      $api_host . $nodes_endpoint . "/$node/lxc" . "/$vmid/status/current";
+    my $status_one_response = $ua->get( $status_one, @pve_auth_cookie );
+    if ( $status_one_response->is_success ) {
+        my $content_data = decode_json( $status_one_response->decoded_content );
         local $name = $content_data->{data}->{name};
         $status = $content_data->{data}->{status};
         print "$name\t\t=> $status\n";
     }
     else {
         print "Failed to get status for $vmid: ["
-          . $status_response->status_line() . "]\n";
+          . $status_one_response->status_line() . "]\n";
         print "Listing all containers instead...\n\n";
         &StatusAll();
         exit 1;
@@ -529,7 +530,8 @@ sub Start {
         exit 1;
     }
     else {
-        my $start_url      = $api_host . $lxc_endpoint . "/$vmid/status/start";
+        my $start_url =
+          $api_host . $nodes_endpoint . "/$node/lxc" . "/$vmid/status/start";
         my $start_response = $ua->request( POST $start_url,
             @pve_auth_cookie, @csrf_prevention_token );
         if ( $start_response->is_success ) {
@@ -556,7 +558,8 @@ sub Stop {
         exit 1;
     }
     else {
-        my $stop_url      = $api_host . $lxc_endpoint . "/$vmid/status/stop";
+        my $stop_url =
+          $api_host . $nodes_endpoint . "/$node/lxc" . "/$vmid/status/stop";
         my $stop_response = $ua->request( POST $stop_url,
             @pve_auth_cookie, @csrf_prevention_token );
         if ( $stop_response->is_success ) {
@@ -574,3 +577,83 @@ sub Stop {
     }
     return;
 }
+
+__END__
+
+=pod
+
+=head1 NAME
+
+proxmox-api - An interactive tool that can interact with the Proxmox 4.x API
+
+A few things you'll need to note before using this:
+
+=item If you're using a self-signed certificate, be sure and uncomment the %ssl_opts hash
+
+=item You'll need to fill in or modify the relevant IP address information: ip_range, ip_block and gw
+
+=item I haven't implemented any functions yet for the pools and storage endpoints
+
+=head1 SYNOPSIS
+
+proxmox-api [options]
+
+Help Options:
+
+  --help      Show help information
+
+  --manual    Show the manual
+
+  --action    Which API action you'd like to perform < Create | Delete | Status | Start | Stop | NextID | NextIP >
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<--help>
+
+=item B<--manual>
+
+=back
+
+=head1 ARGUMENTS
+
+--action < Create | Delete | Status | Start | Stop | NextID | NextIP >
+
+=head1 EXAMPLES
+
+Create a container:
+    proxmox-api.pm --action Create
+
+Delete a container:
+    proxmox-api.pm --action Delete
+
+Check container status (one or all):
+    proxmox-api.pm --action Status
+    
+Start a container:
+    proxmox-api.pm --action Start
+
+Stop a container:
+    proxmox-api.pm --action Stop
+
+List the next available container ID:
+    proxmox-api.pm --action NextID
+
+List the next available IP address:
+    proxmox-api.pm --action NextIP
+
+=head1 DESCRIPTION
+
+This commandline utility allows for interactive, one-off actions against the Proxmox 4.x API.
+There must exist in the same directory a proxmox.properties file containing:
+    user=user@realm
+    password=password
+
+=head1 AUTHOR
+
+Jeff Melton
+--
+jeff@themeltonplantation.com
+
+=cut

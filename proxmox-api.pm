@@ -133,7 +133,6 @@ given ($action) {
         $vmid = $next_id;
         &Create( $user, $password, $hostname, $hostpass, $lowest_node,
             $next_id, $next_ip, %net0 );
-        );
         do {
             sleep(15);
             &StatusOne( $user, $password, $vmid );
@@ -166,7 +165,7 @@ given ($action) {
         if ( $response == 1 ) {
             print "What container status would you like to check? ";
             chomp( $vmid = <> );
-			redo unless ( length $vmid > 0 );
+            redo unless ( length $vmid > 0 );
             &Validate($vmid);
             &StatusOne( $user, $password, $vmid );
         }
@@ -255,8 +254,10 @@ sub Usage {
             }
         }
         my @lowest_usage;
-        foreach $key ( sort { $resource_hash{$a} <=> $resource_hash{$b} }
-            keys %resource_hash )
+        foreach $key (
+            sort { $resource_hash{$a} <=> $resource_hash{$b} }
+            keys %resource_hash
+          )
         {
             push( @lowest_usage, $key );
         }
@@ -321,8 +322,8 @@ sub Create {
       . "?$args"
       . "&net0=$net0";
     my $create_response =
-      $ua->request( POST $create_url, @pve_auth_cookie,
-        @csrf_prevention_token );
+      $ua->request( POST $create_url,
+        @pve_auth_cookie, @csrf_prevention_token );
     if ( $create_response->is_success ) {
         $vmid = $next_id;
         do {
@@ -338,6 +339,7 @@ sub Create {
                   decode_json( $status_response->decoded_content );
                 local $name = $content_data->{data}->{name};
                 $status = $content_data->{data}->{status};
+            }
         } until ( defined $status );
         print "Container $next_id created!\n";
     }

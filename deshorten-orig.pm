@@ -2,21 +2,15 @@
 use strict;
 use warnings;
 
-use URI::URL;
-use Modern::Perl;
 use LWP::UserAgent;
-use Mojo::UserAgent;
+use URI::URL;
 use Browser::Open qw ( open_browser );
 
 my $url       = $ARGV[0];
 my $dirty_url = long_url($url);
-my $source_link;
 
 sub long_url {
-    my $ua = LWP::UserAgent->new;
-    $ua->agent(
-        'Mozilla/5.0 (X11; Ubuntu; Linux i686) Gecko/20071127 Firefox/2.0.0.11'
-    );
+    my $ua        = LWP::UserAgent->new;
     my $request   = HTTP::Request->new( HEAD => $url );
     my $response  = $ua->request($request);
     my $dirty_url = $response->request->uri;
@@ -34,23 +28,7 @@ sub clean_url {
     return $clean_url;
 }
 
-if ( $clean_url =~ /slashdot/ ) {
-    source_link($clean_url);
-}
-
-sub source_link {
-	my $ua = Mojo::UserAgent->new;
-    $ua->get($clean_url)->res->dom->find('.story-sourcelnk')->grep(
-        sub {
-            $source_link = shift->{href};
-            return $source_link;
-        }
-    );
-	$clean_url = $source_link;
-	return;
-}
-
-print "The source url is: " . $clean_url . "\n";
+print "The clean url is: " . $clean_url . "\n";
 my $continue = prompt_user( "Would you like to continue?", "y" );
 
 sub prompt_user {

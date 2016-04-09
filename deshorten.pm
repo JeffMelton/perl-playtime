@@ -2,15 +2,24 @@
 use strict;
 use warnings;
 
+use JSON;
 use URI::URL;
+use REST::Client;
 use Modern::Perl;
 use LWP::UserAgent;
 use Mojo::UserAgent;
 use Browser::Open qw ( open_browser );
 
-my $url       = $ARGV[0];
-my $dirty_url = long_url($url);
+my $token;
+my $continue;
+my $dirty_url;
+my $clean_url;
 my $source_link;
+my $access_token;
+my $url          = $ARGV[0];
+my $client       = REST::Client->new();
+my $redirect_uri = 'https://getpocket.com/a/queue';
+my $consumer_key = '<your Pocket API key here>';
 
 sub long_url {
     my $ua = LWP::UserAgent->new;
@@ -23,35 +32,81 @@ sub long_url {
     return $dirty_url;
 }
 
-my $clean_url = clean_url($dirty_url);
-
 sub clean_url {
     my $to_be_cleaned = URI::URL->new($dirty_url);
     my $scheme        = $to_be_cleaned->scheme;
     my $host          = $to_be_cleaned->host;
     my $path          = $to_be_cleaned->path;
-    my $clean_url     = $scheme . "://" . $host . $path;
+    $clean_url = $scheme . "://" . $host . $path;
     return $clean_url;
 }
 
-if ( $clean_url =~ /slashdot/ ) {
-    source_link($clean_url);
-}
-
 sub source_link {
-	my $ua = Mojo::UserAgent->new;
+    my $ua = Mojo::UserAgent->new;
     $ua->get($clean_url)->res->dom->find('.story-sourcelnk')->grep(
         sub {
             $source_link = shift->{href};
             return $source_link;
         }
     );
-	$clean_url = $source_link;
-	return;
+    return $source_link;
 }
 
-print "The source url is: " . $clean_url . "\n";
-my $continue = prompt_user( "Would you like to continue?", "y" );
+sub pocket {
+    $client->setHost('https://getpocket.com/v3');
+    $client->addHeader( 'Content-Type', 'application/json' );
+    $client->addHeader( 'X-Accept',     'application/json' );
+
+    sub getToken {
+        my %request_body = (
+            'consumer_key' => "$consumer_key",
+            'redirect_uri' => "$redirect_uri"
+        );
+        my $request_body = encode_json \%request_body;
+        $client->POST( '/oauth/request', $request_body );
+        my $response = from_json( $client->responseContent() );
+        $token = $response->{'code'};
+        return $token;
+    }
+
+    sub authorizeApp {
+        open_browser(
+"https://getpocket.com/auth/authorize?request_token=$token&redirect_uri=$redirect_uri"
+        );
+        sleep(2);
+
+        my %authorize_body = (
+            'consumer_key' => "$consumer_key",
+            'code'         => "$token"
+        );
+        my $authorize_body = encode_json \%authorize_body;
+
+        $client->POST( '/oauth/authorize', $authorize_body )->responseContent();
+        my $response = from_json( $client->responseContent() );
+        $access_token = $response->{'access_token'};
+        my $username = $response->{'username'};
+        return $access_token;
+    }
+
+    sub addLink {
+        my %add_body = (
+            'consumer_key' => "$consumer_key",
+            'access_token' => "$access_token",
+            'url'          => "$clean_url"
+        );
+        my $add_body = encode_json \%add_body;
+
+        $client->POST( '/add', $add_body );
+        my $response = $client->responseContent();
+        return $response;
+    }
+
+    $token = &getToken;
+    $access_token = &authorizeApp( $token, $consumer_key, $redirect_uri );
+    print "Adding $clean_url to Pocket.\n";
+    &addLink( $access_token, $consumer_key, $clean_url );
+    return;
+}
 
 sub prompt_user {
 
@@ -85,7 +140,24 @@ sub prompt_user {
     return $continue;
 }
 
-if ( $continue =~ m/y/i ) {
+$dirty_url = long_url($url);
+$clean_url = clean_url($dirty_url);
+
+if ( $clean_url =~ /slashdot/ ) {
+    $clean_url = source_link($clean_url);
+}
+
+print "The source url is: " . $clean_url . "\n";
+
+$continue = prompt_user( "(O)pen, (P)ocket, or (C)ancel?", "c" );
+
+if ( $continue =~ m/p/i ) {
+    pocket($clean_url);
+}
+elsif ( $continue =~ m/c/i ) {
+    exit 0;
+}
+else {
     open_browser($clean_url);
 }
 

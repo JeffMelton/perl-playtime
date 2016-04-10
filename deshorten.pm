@@ -19,7 +19,7 @@ my $access_token;
 my $url          = $ARGV[0];
 my $client       = REST::Client->new();
 my $redirect_uri = 'https://getpocket.com/a/queue';
-my $consumer_key = '<your Pocket API key here>';
+my $consumer_key = '<your Pocket API key>';
 
 sub long_url {
     my $ua = LWP::UserAgent->new;
@@ -36,7 +36,8 @@ sub clean_url {
     my $to_be_cleaned = URI::URL->new($dirty_url);
     my $scheme        = $to_be_cleaned->scheme;
     my $host          = $to_be_cleaned->host;
-    my $path          = $to_be_cleaned->path;
+    $host =~ s/(^m\.)|(^mobile\.)//;
+    my $path = $to_be_cleaned->path;
     $clean_url = $scheme . "://" . $host . $path;
     return $clean_url;
 }
@@ -145,6 +146,10 @@ $clean_url = clean_url($dirty_url);
 
 if ( $clean_url =~ /slashdot/ ) {
     $clean_url = source_link($clean_url);
+}
+elsif ( $clean_url =~ /wired/ ) {
+    pocket($clean_url);
+    exit 0;
 }
 
 print "The source url is: " . $clean_url . "\n";

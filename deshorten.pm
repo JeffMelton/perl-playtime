@@ -11,6 +11,7 @@ use Mojo::UserAgent;
 use Browser::Open qw ( open_browser );
 
 my $token;
+my $prompt;
 my $continue;
 my $dirty_url;
 my $clean_url;
@@ -19,7 +20,7 @@ my $access_token;
 my $url          = $ARGV[0];
 my $client       = REST::Client->new();
 my $redirect_uri = 'https://getpocket.com/a/queue';
-my $consumer_key = '<your Pocket API key>';
+my $consumer_key = '<your Pocket consumer key';
 
 sub long_url {
     my $ua = LWP::UserAgent->new;
@@ -148,8 +149,14 @@ if ( $clean_url =~ /slashdot/ ) {
     $clean_url = source_link($clean_url);
 }
 elsif ( $clean_url =~ /wired/ ) {
-    pocket($clean_url);
-    exit 0;
+	$prompt = prompt_user( "Send Wired link to Pocket?", "y" );
+	if ( $prompt =~ m/n/i ) {
+		exit 0;
+	}
+	else {
+		pocket($clean_url);
+		exit 0;
+	}
 }
 
 print "The source url is: " . $clean_url . "\n";

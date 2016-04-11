@@ -6,6 +6,7 @@ use JSON;
 use URI::URL;
 use REST::Client;
 use Modern::Perl;
+use Term::ReadKey;
 use LWP::UserAgent;
 use Mojo::UserAgent;
 use Browser::Open qw ( open_browser );
@@ -20,7 +21,7 @@ my $access_token;
 my $url          = $ARGV[0];
 my $client       = REST::Client->new();
 my $redirect_uri = 'https://getpocket.com/a/queue';
-my $consumer_key = '<your Pocket consumer key';
+my $consumer_key = '<your Pocket API key';
 
 sub long_url {
     my $ua = LWP::UserAgent->new;
@@ -128,17 +129,26 @@ sub prompt_user {
     print qq{$prompt_string [$default_value]: };
 
     $| = 1;
-    $_ = <STDIN>;
 
-    chomp;
+	ReadMode 4;
+	#$_ = <STDIN>;
+	#chomp;
+	my $key;
+	while (not defined ($key = ReadKey(-1))) {
+	}
+	ReadMode 0;
+
 
     if ($default_value) {
-        return $_ ? $_ : $default_value;
+		#return $_ ? $_ : $default_value;
+		return $key ? $key : $default_value;
     }
     else {
-        return $_;
+		#return $_;
+		return $key;
     }
-    $continue = $_;
+	#$continue = $_;
+	$continue = $key;
     return $continue;
 }
 
@@ -165,12 +175,14 @@ $continue = prompt_user( "(O)pen, (P)ocket, or (C)ancel?", "c" );
 
 if ( $continue =~ m/p/i ) {
     pocket($clean_url);
+	print "\n";
 }
 elsif ( $continue =~ m/c/i ) {
     exit 0;
 }
 else {
     open_browser($clean_url);
+	print "\n";
 }
 
 exit 0;

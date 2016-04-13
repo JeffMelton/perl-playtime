@@ -21,7 +21,7 @@ my $access_token;
 my $url          = $ARGV[0];
 my $client       = REST::Client->new();
 my $redirect_uri = 'https://getpocket.com/a/queue';
-my $consumer_key = '<your Pocket API key';
+my $consumer_key = '<your Pocket API key>';
 
 sub long_url {
     my $ua = LWP::UserAgent->new;
@@ -52,7 +52,12 @@ sub source_link {
             return $source_link;
         }
     );
-    return $source_link;
+	if ( defined $source_link ) {
+		return $source_link;
+	} else {
+		$source_link = $ua->get($clean_url)->req->url;
+		return $source_link;
+	}
 }
 
 sub pocket {
@@ -130,27 +135,20 @@ sub prompt_user {
 
     $| = 1;
 
-    ReadMode 4;
+	ReadMode 4;
+	my $key;
+	while (not defined ($key = ReadKey(-1))) {
+	}
+	ReadMode 0;
 
-    #$_ = <STDIN>;
-    #chomp;
-    my $key;
-    while ( not defined( $key = ReadKey(-1) ) ) {
-    }
-    ReadMode 0;
 
     if ($default_value) {
-
-        #return $_ ? $_ : $default_value;
-        return $key ? $key : $default_value;
+		return $key ? $key : $default_value;
     }
     else {
-        #return $_;
-        return $key;
+		return $key;
     }
-
-    #$continue = $_;
-    $continue = $key;
+	$continue = $key;
     return $continue;
 }
 
@@ -161,14 +159,14 @@ if ( $clean_url =~ /slashdot/ ) {
     $clean_url = source_link($clean_url);
 }
 elsif ( $clean_url =~ /wired/ ) {
-    $prompt = prompt_user( "Send Wired link to Pocket?", "y" );
-    if ( $prompt =~ m/n/i ) {
-        exit 0;
-    }
-    else {
-        pocket($clean_url);
-        exit 0;
-    }
+	$prompt = prompt_user( "Send Wired link to Pocket?", "y" );
+	if ( $prompt =~ m/n/i ) {
+		exit 0;
+	}
+	else {
+		pocket($clean_url);
+		exit 0;
+	}
 }
 
 print "The source url is: " . $clean_url . "\n";
@@ -176,15 +174,16 @@ print "The source url is: " . $clean_url . "\n";
 $continue = prompt_user( "(O)pen, (P)ocket, or (C)ancel?", "c" );
 
 if ( $continue =~ m/p/i ) {
+	print "\n";
     pocket($clean_url);
-    print "\n";
 }
-elsif ( $continue =~ m/c/i ) {
-    exit 0;
+elsif ( $continue =~ m/o/i ) {
+    open_browser($clean_url);
+	print "\n";
 }
 else {
-    open_browser($clean_url);
-    print "\n";
+	print "\n";
+    exit 0;
 }
 
 exit 0;

@@ -26,7 +26,7 @@ my $consumer_key = '<your Pocket API key';
 sub long_url {
     my $ua = LWP::UserAgent->new;
     $ua->agent(
-        'Mozilla/5.0 (X11; Ubuntu; Linux i686) Gecko/20071127 Firefox/2.0.0.11'
+		'Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:45.0) Gecko/20100101 Firefox/45.0'
     );
     my $request   = HTTP::Request->new( HEAD => $url );
     my $response  = $ua->request($request);
@@ -130,25 +130,27 @@ sub prompt_user {
 
     $| = 1;
 
-	ReadMode 4;
-	#$_ = <STDIN>;
-	#chomp;
-	my $key;
-	while (not defined ($key = ReadKey(-1))) {
-	}
-	ReadMode 0;
+    ReadMode 4;
 
+    #$_ = <STDIN>;
+    #chomp;
+    my $key;
+    while ( not defined( $key = ReadKey(-1) ) ) {
+    }
+    ReadMode 0;
 
     if ($default_value) {
-		#return $_ ? $_ : $default_value;
-		return $key ? $key : $default_value;
+
+        #return $_ ? $_ : $default_value;
+        return $key ? $key : $default_value;
     }
     else {
-		#return $_;
-		return $key;
+        #return $_;
+        return $key;
     }
-	#$continue = $_;
-	$continue = $key;
+
+    #$continue = $_;
+    $continue = $key;
     return $continue;
 }
 
@@ -159,14 +161,14 @@ if ( $clean_url =~ /slashdot/ ) {
     $clean_url = source_link($clean_url);
 }
 elsif ( $clean_url =~ /wired/ ) {
-	$prompt = prompt_user( "Send Wired link to Pocket?", "y" );
-	if ( $prompt =~ m/n/i ) {
-		exit 0;
-	}
-	else {
-		pocket($clean_url);
-		exit 0;
-	}
+    $prompt = prompt_user( "Send Wired link to Pocket?", "y" );
+    if ( $prompt =~ m/n/i ) {
+        exit 0;
+    }
+    else {
+        pocket($clean_url);
+        exit 0;
+    }
 }
 
 print "The source url is: " . $clean_url . "\n";
@@ -175,14 +177,14 @@ $continue = prompt_user( "(O)pen, (P)ocket, or (C)ancel?", "c" );
 
 if ( $continue =~ m/p/i ) {
     pocket($clean_url);
-	print "\n";
+    print "\n";
 }
 elsif ( $continue =~ m/c/i ) {
     exit 0;
 }
 else {
     open_browser($clean_url);
-	print "\n";
+    print "\n";
 }
 
 exit 0;

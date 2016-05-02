@@ -1,11 +1,12 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
-use POSIX 'strftime';
+
 use DateTime;
-use Modern::Perl;
-use Excel::Writer::XLSX;
 use Text::CSV;
+use Modern::Perl;
+use POSIX 'strftime';
+use Excel::Writer::XLSX;
 use Excel::Writer::XLSX::Utility;
 
 my $file = $ARGV[0] or die "Please supply a CSV file as a script argument.\n";

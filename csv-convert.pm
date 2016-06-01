@@ -149,4 +149,5 @@ for my $hide_row_data ( @rows1 ) {
 }
 
 # clean up
-unlink $csv1, $csv2;
+close $xlsx;
+my $cleanup = unlink $csv1, $csv2;

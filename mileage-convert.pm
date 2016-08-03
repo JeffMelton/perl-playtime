@@ -8,11 +8,16 @@ use Modern::Perl;
 use POSIX 'strftime';
 use Excel::Writer::XLSX;
 use Excel::Writer::XLSX::Utility;
+use Email::Sender::Simple qw(sendmail);
+use Email::Sender::Transport::SMTP ();
+use Email::Simple                  ();
+use Email::Simple::Creator         ();
 
 my $file = $ARGV[0] or die "Please supply a CSV file as a script argument.\n";
 
 my ( $out1, $csv1_ref );
 my ( @csv0, @csv1 );
+my $out_path = "/home/jeff/Downloads/";
 my $block1 = "Trip Logs";
 my $block2 = "Locations";
 
@@ -86,7 +91,7 @@ delete @hash{
 my $month = DateTime->now->subtract( months => 1 )->truncate( to => 'month' );
 my $strf_pattern = '%B';
 my $date         = $month->strftime($strf_pattern);
-my $xlsx         = $date . " Mileage" . ".xlsx";
+my $xlsx         = $out_path . $date . " Mileage" . ".xlsx";
 my $workbook     = Excel::Writer::XLSX->new($xlsx);
 
 # Create new worksheets

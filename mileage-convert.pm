@@ -140,3 +140,4 @@ $worksheet1->write_formula( $last_row + 1,
 
 # clean up
 my $cleanup = unlink $csv1, $csv1_edit;
+print "$xlsx\n";

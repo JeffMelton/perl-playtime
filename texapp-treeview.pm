@@ -12,8 +12,7 @@ $addaction = sub {
 
 	return 0 unless ($command =~ s#^/tree ## && length($command));
 
-	my $post = &get_post($command);
-	my $canonical_id = $post->{'id'};
+	my $canonical_id = &get_post($command)->{'id'};
 	unless ($canonical_id) {
 		&std(" -- sorry, no such post (yet?): $command\n");
 		return 1;

@@ -13,7 +13,7 @@ $addaction = sub {
 	return 0 unless ($command =~ s#^/tree ## && length($command));
 
 	my $post = &get_post($command);
-	if (!$post->{'id'}) {
+	unless ($post->{'id'}) {
 		&std(" -- sorry, no such post (yet?): $command\n");
 		return 1;
 	}

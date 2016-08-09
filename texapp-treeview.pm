@@ -13,11 +13,12 @@ $addaction = sub {
 	return 0 unless ($command =~ s#^/tree ## && length($command));
 
 	my $post = &get_post($command);
-	unless ($post->{'id'}) {
+	my $canonical_id = $post->{'id'};
+	unless ($canonical_id) {
 		&std(" -- sorry, no such post (yet?): $command\n");
 		return 1;
 	}
-	my $canonical_id = $post->{'id'};
+
 	# I use the following command, because I call an external script with
 	# urlopen in .texapprc:
 	#

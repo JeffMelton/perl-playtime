@@ -8,10 +8,6 @@ use Modern::Perl;
 use POSIX 'strftime';
 use Excel::Writer::XLSX;
 use Excel::Writer::XLSX::Utility;
-use Email::Sender::Simple qw(sendmail);
-use Email::Sender::Transport::SMTP ();
-use Email::Simple                  ();
-use Email::Simple::Creator         ();
 
 my $file = $ARGV[0] or die "Please supply a CSV file as a script argument.\n";
 

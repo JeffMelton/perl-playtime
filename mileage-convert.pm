@@ -135,5 +135,6 @@ $worksheet1->write_formula( $last_row + 1,
     4, "=SUM(E2:$last_cell)", $underline );
 
 # clean up
-my $cleanup = unlink $csv1, $csv1_edit;
-print "$xlsx\n";
+my $cleanup = unlink $csv1, $csv1_edit, $file;
+my $rename = rename $file . ".bak", $file;
+#print "$xlsx\n";

@@ -137,5 +137,4 @@ $worksheet1->write_formula( $last_row + 1,
 # clean up
 my $cleanup = unlink $csv1, $csv1_edit, $file;
 my $rename = rename $file . ".bak", $file;
-print "Created $xlsx\n";
 print $xlsx;

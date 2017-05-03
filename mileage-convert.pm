@@ -18,7 +18,7 @@ my $block1 = "Trip Logs";
 my $block2 = "Locations";
 
 # Delete the first 42 rows, as these aren't needed
-system("sed -i.bak -e '1,42d' $file");
+system("sed -i.bak -e '1,20d' $file");
 
 # open the initial input file
 open( my $data, '<', $file ) or die "Could not open '$file' $!\n";
@@ -80,7 +80,7 @@ close $fh1;
 my %hash = map { shift @$_ => $_ } @columns;
 delete @hash{
     "Day", "Start Time", "End Time", "Activity", "From", "To", "Parking",
-    "Tolls", "Notes", "Gap Between Trips (mi)", "Receipts"
+    "Tolls", "Notes", "Gap Between Trips (mi)", "Receipts", "Route"
 };
 
 # Create Excel workbook
